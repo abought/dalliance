@@ -46,6 +46,24 @@ gulp.task('build-main', function() {
         .pipe(gulp.dest('build/'));
 });
 
+gulp.task('build-datasource', function() {
+    browserify({
+        entries: 'js/exports-sources.js',
+        extensions: ['.js', '.es6'],
+        debug: true,
+        nobuiltins: true
+    })
+        .transform("babelify", {presets: ["es2015"],
+                                extensions: [".js", ".es6"]})
+        .bundle()
+        .pipe(source('datasource-shim.js'))
+        .pipe(buffer())
+        .pipe(uglify())
+        .pipe(sourcemaps.write('./'))
+        .pipe(gulp.dest('build/'));
+});
+
+
 gulp.task('compile-worker', function() {
     browserify({
         entries: 'js/fetchworker.js',
