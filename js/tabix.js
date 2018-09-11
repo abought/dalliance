@@ -1,6 +1,6 @@
 /* -*- mode: javascript; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 
-// 
+//
 // Dalliance Genome Explorer
 // (c) Thomas Down 2006-2011
 //
@@ -95,7 +95,7 @@ function connectTabix(data, tbi, callback) {
                 p += 8 + (nchnk * 16);
             }
             var nintv = readInt(uncba, p); p += 4;
-            
+
             var q = p;
             for (var i = 0; i < nintv; ++i) {
                 var v = readVob(uncba, q); q += 8;
@@ -115,7 +115,7 @@ function connectTabix(data, tbi, callback) {
             var ub = uncba;
             if (nbin > 0) {
                 tabix.indices[ref] = new Uint8Array(unchead, blockStart, p - blockStart);
-            }                     
+            }
         }
 
         tabix.headerMax = minBlockIndex;
@@ -169,7 +169,7 @@ TabixFile.prototype.blocksForRange = function(refId, min, max) {
             lowest = lb;
         }
     }
-    
+
     var prunedOtherChunks = [];
     if (lowest != null) {
         for (var i = 0; i < otherChunks.length; ++i) {
@@ -178,7 +178,7 @@ TabixFile.prototype.blocksForRange = function(refId, min, max) {
                 prunedOtherChunks.push(chnk);
             }
         }
-    } 
+    }
     otherChunks = prunedOtherChunks;
 
     var intChunks = [];
@@ -245,7 +245,7 @@ TabixFile.prototype.fetch = function(chr, min, max, callback) {
             var c = chunks[index];
             var fetchMin = c.minv.block;
             var fetchMax = c.maxv.block + (1<<16); // *sigh*
-            thisB.data.slice(fetchMin, fetchMax - fetchMin).fetch(function(r) {
+            thisB.data.slice(fetchMin, fetchMax - fetchMin).fetch(function(r) { //2^16 fetch, 65536 bytes
                 data = unbgzf(r, c.maxv.block - c.minv.block + 1);
                 return tramp();
             });
@@ -288,7 +288,22 @@ TabixFile.prototype.readRecords = function(ba, offset, sink, min, max, chr) {
     }
 }
 
-TabixFile.prototype.fetchHeader = function(callback) {
+TabixFile.prototype.fetchHeader = function(callback, opts) {
+    // This routine fetches a large block of data from the start of the file, and then selects "headers" based
+    //  on one of three possible criteria:
+    // - metaOnly (tabix -H compatible): only lines that begin with the meta character are accepted
+    // - skipped (get all "skipped" rows, based on tabix -S parameter when indexing)
+    // - nLines (peek at the first x lines, which may return data as well as headers)
+
+    // In all cases, the callback will return as soon as we reach the first line that does not meet these conditions.
+    var defaults = { metaOnly: true, skipped: false, nLines: 0 };
+    opts = opts || defaults;
+    Object.keys(defaults).forEach(function(key) {
+        if (!opts.hasOwnProperty(key)) {
+            opts[key] = defaults[key];
+        }
+    });
+
     var self = this;
     var fetchPtr = 0, ptr = 0, line='';
     var lines = [];
@@ -300,9 +315,12 @@ TabixFile.prototype.fetchHeader = function(callback) {
         var ba = new Uint8Array(unbgzf(chnk, chnk.byteLength));
         var ptr = 0, line = '', lines = [];
         while (ptr < ba.length) {
-            var ch = ba[ptr++]
+            var ch = ba[ptr++];
             if (ch == 10) {
-                if (line.charCodeAt(0) == self.meta) {
+                if ((!opts.metaOnly && line.charCodeAt(0) == self.meta) ||
+                    (opts.skipped && lines.length < self.skip) ||
+                    (opts.nLines && lines.length < opts.nLines))
+                {
                     lines.push(line);
                     line = '';
                 } else {
