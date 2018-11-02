@@ -246,8 +246,12 @@ TabixFile.prototype.fetch = function(chr, min, max, callback) {
             var fetchMin = c.minv.block;
             var fetchMax = c.maxv.block + (1<<16); // *sigh*
             thisB.data.slice(fetchMin, fetchMax - fetchMin).fetch(function(r) { //2^16 fetch, 65536 bytes
-                data = unbgzf(r, c.maxv.block - c.minv.block + 1);
-                return tramp();
+                try {
+                    data = unbgzf(r, c.maxv.block - c.minv.block + 1);
+                    return tramp();
+                } catch (e) {
+                    return callback(null, e);
+                }
             });
         } else {
             var ba = new Uint8Array(data);
@@ -257,7 +261,12 @@ TabixFile.prototype.fetch = function(chr, min, max, callback) {
             return tramp();
         }
     }
-    tramp();
+
+    try {
+        tramp();
+    } catch (e) {
+        callback(null, e);
+    }
 }
 
 TabixFile.prototype.readRecords = function(ba, offset, sink, min, max, chr) {
