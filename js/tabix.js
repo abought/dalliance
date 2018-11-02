@@ -317,7 +317,7 @@ TabixFile.prototype.fetchHeader = function(callback, opts) {
         while (ptr < ba.length) {
             var ch = ba[ptr++];
             if (ch == 10) {
-                if ((!opts.metaOnly && line.charCodeAt(0) == self.meta) ||
+                if ((opts.metaOnly && line.charCodeAt(0) == self.meta) ||
                     (opts.skipped && lines.length < self.skip) ||
                     (opts.nLines && lines.length < opts.nLines))
                 {

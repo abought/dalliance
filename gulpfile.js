@@ -53,11 +53,14 @@ gulp.task('build-datasource', function() {
         debug: true,
         nobuiltins: true
     })
-        .transform("babelify", {presets: ["es2015"],
-                                extensions: [".js", ".es6"]})
-        .bundle()
+        .transform("babelify", {
+            presets: ["es2015"],
+            extensions: [".js", ".es6"],
+            sourceMaps: true,
+        }).bundle()
         .pipe(source('datasource-shim.js'))
         .pipe(buffer())
+        .pipe(sourcemaps.init({loadMaps: true}))
         .pipe(uglify())
         .pipe(sourcemaps.write('./'))
         .pipe(gulp.dest('build/'));
